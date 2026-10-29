@@ -148,6 +148,10 @@ python selfcheck.py     # 14 assertions: must fire on demo/, must stay silent on
 A checker that only ever reports "looks fine" (or only ever reports problems) isn't
 trustworthy. The self-check asserts both directions.
 
+CI goes one step further: the `gate` job asserts that `--fail-on D3` **actually exits 1** on
+`demo/` and **exits 0** on `clean/`. A gate that cannot fail is not a gate — this repository
+is only useful if its own gate is proven to fire.
+
 ## Licence
 
 Apache-2.0

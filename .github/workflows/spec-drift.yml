@@ -1,10 +1,12 @@
 name: spec-drift
 
-# 这个 workflow 就是本仓库的主张本身：
-# 「规格应该保持一致」不该是一句愿望，而应该是一个会红掉的检查。
+# This workflow is the repo's own claim, executed:
+# "specs should stay consistent" should not be a wish — it should be a check that goes red.
 #
-# 第一段：验证工具自己在已知缺陷样例上必须报错（否则工具坏了没人知道）
-# 第二段：在真实项目上跑 D3，任何一条 FR 丢了测试锚点就让 CI 红
+# Job 1 (selfcheck): the tool must fire on a known-bad fixture and stay silent on a clean one.
+#                    A checker nobody tests is a checker nobody can trust.
+# Job 2 (gate):      prove the --fail-on gate actually blocks. It must exit 1 on demo/ and
+#                    exit 0 on clean/. If the gate ever becomes a no-op, this job fails.
 
 on:
   push:
@@ -13,29 +15,40 @@ on:
 
 jobs:
   selfcheck:
-    name: 工具自检（在已知缺陷样例上必须报警）
+    name: Self-check · 工具自检（缺陷样例必须报警，干净样例必须沉默）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: demo/ 必须检出 8 条判定
+      - name: demo/ must report 8 findings
         run: python spec_drift.py --root demo
-      - name: clean/ 必须零误报
+      - name: clean/ must report 0 findings
         run: python spec_drift.py --root clean
-      - name: 自测套件
+      - name: assertion suite (14 assertions, both directions)
         run: python selfcheck.py
 
   gate:
-    name: 规格漂移门禁
+    name: Drift gate · 门禁必须真的会红（不能是空的）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # 在自己的仓库里跑：任何 FR 丢掉测试锚点即阻断合并
-      - name: D3 gate
-        run: python spec_drift.py --root . --fail-on D3
-        continue-on-error: true   # 模板仓库自身不含 specs/，实际使用时请删掉这行
+      # 1) The gate must FAIL on a fixture that genuinely has lost test anchors.
+      - name: demo/ must FAIL the D3 gate (expect exit 1)
+        run: |
+          set +e
+          python spec_drift.py --root demo --fail-on D3
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::gate did not fire on a fixture that must fail (exit $code)"
+            exit 1
+          fi
+          echo "gate fired correctly: exit 1"
+      # 2) The gate must PASS on a fixture where every FR is anchored.
+      - name: clean/ must PASS the D3 gate (expect exit 0)
+        run: python spec_drift.py --root clean --fail-on D3
