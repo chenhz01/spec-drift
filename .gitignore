@@ -1,0 +1,24 @@
+# ---- 仓库本体 ----
+# （spec_drift.py / selfcheck.py / README.md / LICENSE / demo/ / clean/ / .github/ 入库）
+
+# 本地验证用的真实项目克隆，不入库（第三方代码，体量大）
+_real/
+
+# 内部工作文件，不入库
+issue-620-reply.md
+待推送清单.md
+find_real_projects.py
+_real_spec_projects.json
+run-output.txt
+
+# 运行产物
+__pycache__/
+*.pyc
+.DS_Store
+
+# 生态扫描原始数据与内部交叉比对（不入库）
+_eco.log
+_ecosystem_result.json
+_cross_hits.json
+cross_match.py
+gen_eco_report.py

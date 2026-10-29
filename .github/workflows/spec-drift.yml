@@ -1,0 +1,41 @@
+name: spec-drift
+
+# 这个 workflow 就是本仓库的主张本身：
+# 「规格应该保持一致」不该是一句愿望，而应该是一个会红掉的检查。
+#
+# 第一段：验证工具自己在已知缺陷样例上必须报错（否则工具坏了没人知道）
+# 第二段：在真实项目上跑 D3，任何一条 FR 丢了测试锚点就让 CI 红
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  selfcheck:
+    name: 工具自检（在已知缺陷样例上必须报警）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: demo/ 必须检出 8 条判定
+        run: python spec_drift.py --root demo
+      - name: clean/ 必须零误报
+        run: python spec_drift.py --root clean
+      - name: 自测套件
+        run: python selfcheck.py
+
+  gate:
+    name: 规格漂移门禁
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # 在自己的仓库里跑：任何 FR 丢掉测试锚点即阻断合并
+      - name: D3 gate
+        run: python spec_drift.py --root . --fail-on D3
+        continue-on-error: true   # 模板仓库自身不含 specs/，实际使用时请删掉这行
